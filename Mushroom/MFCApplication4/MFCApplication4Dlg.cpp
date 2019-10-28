@@ -1,12 +1,13 @@
 
-/* 
+/*
 
 	Mushroom.cpp : Made By 창준 2016 04 02
-
+	winsock 기반 프로토타입 최적화
+	winpcap testing
 */
 
 #pragma comment(lib,"ws2_32.lib")
-//#pragma comment (lib, "wpcap.lib")  winpcap 쓸떄 사용
+//#pragma comment (lib, "wpcap.lib")  winpcap 
 #include "stdafx.h"
 #include "MFCApplication4.h"
 #include "MFCApplication4Dlg.h"
@@ -24,10 +25,8 @@
 #include "pcap.h"
 #include "NewDlg.h"
 
-
 #define DESIRED_WINSOCK_VERSION    0x0101
 #define MINIMUM_WINSOCK_VERSION    0x0001
-
 
 #ifdef _DEBUG
 #define new DEBUG_NEW
@@ -36,8 +35,6 @@ using namespace std;
 #define SIO_RCVALL _WSAIOW(IOC_VENDOR,1) 
 #define PROTO_TCP	6
 
-
-
 #define BUFSIZE 512
 SOCKET sock; // 소켓
 SYSTEMTIME st; //시간
@@ -45,7 +42,6 @@ COLORREF color_front;
 COLORREF color_back = 0xBB66EE;
 
 int delay = 50;
-
 DWORD ThreadID;
 HWND hWnd;
 HWND hMP = FindWindow(NULL, "MapleStory");
@@ -55,27 +51,27 @@ BOOL WARISTART = FALSE, ColorCheck = FALSE;
 
 
 char SignalDevice[256], errbuf[PCAP_ERRBUF_SIZE];
-pcap_if_t *alldevs;
-pcap_if_t *d;
-pcap_t *adhandle;
+pcap_if_t* alldevs;
+pcap_if_t* d;
+pcap_t* adhandle;
 
 unsigned int	m_SOCK;
 int				m_BUFFSZ;
-unsigned char*	m_BUFF;		// 패킷 버퍼
+unsigned char* m_BUFF;		// 패킷 버퍼
 int				m_PACKETSZ; // 버퍼에 읽은 패킷 크기	
-unsigned char*	m_PDATA;	// 데이터 영역
-unsigned char*	m_PDATATXT;	// 데이터 영역(Text)
+unsigned char* m_PDATA;	// 데이터 영역
+unsigned char* m_PDATATXT;	// 데이터 영역(Text)
 int				m_DATASZ;	// 데이터 크기	
 unsigned short	m_PROTO;	// 프로토콜
 unsigned int	m_SRCIP;	// 송신 ip
 unsigned int	m_DSTIP;	// 수신 ip
 int				m_SRCPORT;	// 송신 port
 int				m_DSTPORT;	// 수신 port
-struct iphdr*	m_PIPH;		// IP 헤더
-struct tcphdr*	m_PTCPH;	// TCP 헤더
-struct udphdr*	m_PUDPH;	// UDP 헤더
-struct icmphdr*	m_PICMPH;	// ICMP 헤더
-unsigned char*	m_TXTBUFF;	// 출력용 버퍼
+struct iphdr* m_PIPH;		// IP 헤더
+struct tcphdr* m_PTCPH;	// TCP 헤더
+struct udphdr* m_PUDPH;	// UDP 헤더
+struct icmphdr* m_PICMPH;	// ICMP 헤더
+unsigned char* m_TXTBUFF;	// 출력용 버퍼
 int				m_TXTSZ;
 
 #ifdef _DEBUG
@@ -184,10 +180,10 @@ CString strIPAddress;
 POINT warick1, warick2, StorePoint; //와리
 COLORREF color, StoreColor;// 상점색
 
-/*마우스 좌표상 픽셀값 따오기*/
+/*마우스 좌표상 픽셀값 가져오기*/
 int getpixcel(HDC hdc, int x, int y) {
 	DWORD color;
-	void *p = (void*)GetPixel;
+	void* p = (void*)GetPixel;
 
 	__asm {
 		mov esi, esp;
@@ -214,39 +210,36 @@ int getpixcel(HDC hdc, int x, int y) {
 
 	return color;
 }
-/*사용자 정의 함수*/
 DWORD WINAPI  SockStart(LPVOID Param); //일상대기
 DWORD WINAPI SockStart2(LPVOID Param);// 고상대기
-DWORD WINAPI WinPcapStart(LPVOID Param); //윈프캡모드
-DWORD WINAPI PICXEL(LPVOID Param);//색
+DWORD WINAPI WinPcapStart(LPVOID Param); //winpcap
+DWORD WINAPI PICXEL(LPVOID Param);//색인식 모드
 void CALLBACK WARITimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 void CALLBACK MTUTimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime);
 void storename(); //일상대기
 void storename2();// 고상대기
 void storename3(); //말하면서대기
-void OffWindowLine(); // 창크기조절v
+void OffWindowLine(); // 창크기조절
 void getitem(); // 아이템올리기
-bool Isok(); // 4점인식
+bool Isok(); // 4점인식 워프
 void ReSetMaket(); //일상재대기
 void ReSetMaket2(); //고상재대기
 void ReSetMaket3(); //고상재대기
 void fullmode(); //풀모드
-void ReSetStore(); //고상리상;
+void ReSetStore(); //고상리상
 void LOGWRITE(char* log2); //로그
 void TIMELOGWRITE(char* log2); //타임로그
 void Click(int Count, int x, int y);// 와리
-void SetClipboardText(CString strSource);//복사함수
+void SetClipboardText(CString strSource); //복사함수
 void GetPixelMP(int x, int y, HWND hMP); //상점색
-void ran();//랜작
+void ran();//MTU 랜작 일-고랜 구현완료
 
-// 응용 프로그램 정보에 사용되는 CAboutDlg 대화 상자입니다.
 
 class CAboutDlg : public CDialogEx
 {
 public:
 	CAboutDlg();
 
-	// 대화 상자 데이터입니다.
 #ifdef AFX_DESIGN_TIME
 	enum { IDD = IDD_ABOUTBOX };
 #endif
@@ -372,12 +365,11 @@ BOOL CMFCApplication4Dlg::OnInitDialog()
 
 	//LOGWRITE("-------  Made By 창준  -------");
 	// 시스템 메뉴에 "정보..." 메뉴 항목을 추가합니다.
-
 	// IDM_ABOUTBOX는 시스템 명령 범위에 있어야 합니다.
 	ASSERT((IDM_ABOUTBOX & 0xFFF0) == IDM_ABOUTBOX);
 	ASSERT(IDM_ABOUTBOX < 0xF000);
 
-	CMenu* pSysMenu = GetSystemMenu(FALSE);
+	CMenu * pSysMenu = GetSystemMenu(FALSE);
 	if (pSysMenu != NULL)
 	{
 		BOOL bNameValid;
@@ -557,9 +549,8 @@ HCURSOR CMFCApplication4Dlg::OnQueryDragIcon()
 	return static_cast<HCURSOR>(m_hIcon);
 }
 
-
 //핫키설정함수
-BOOL CMFCApplication4Dlg::PreTranslateMessage(MSG* pMsg)
+BOOL CMFCApplication4Dlg::PreTranslateMessage(MSG * pMsg)
 {
 	// TODO: 여기에 특수화된 코드를 추가 및/또는 기본 클래스를 호출합니다.
 	if (m_hAccelTable != NULL)
@@ -579,650 +570,6 @@ BOOL CMFCApplication4Dlg::PreTranslateMessage(MSG* pMsg)
 
 }
 
-//복사함수
-BOOL CopyToClipboard(CListCtrl* pListCtrl, LPCTSTR lpszSeparator = _T("\t"), BOOL bCopyHeaderText = FALSE)
-{
-	ASSERT(pListCtrl && ::IsWindow(pListCtrl->GetSafeHwnd()));
-
-	CString sResult;
-	POSITION pos = pListCtrl->GetFirstSelectedItemPosition();
-	if (!pos)
-		return TRUE;
-
-	CWaitCursor wait;
-	int nItem, nCount = 0;
-	int nColumn = 1;
-
-	if ((pListCtrl->GetStyle() & LVS_TYPEMASK) == LVS_REPORT &&
-		pListCtrl->GetExtendedStyle() & LVS_EX_FULLROWSELECT)
-	{
-		CHeaderCtrl* pHeader = pListCtrl->GetHeaderCtrl();
-		nColumn = pHeader ? pHeader->GetItemCount() : 1;
-
-		if (bCopyHeaderText && pHeader)
-		{
-			for (int i = 0; i < nColumn; ++i)
-			{
-				TCHAR szBuffer[256];
-				HDITEM hdi;
-				hdi.mask = HDI_TEXT;
-				hdi.pszText = szBuffer;
-				hdi.cchTextMax = 256;
-
-				pHeader->GetItem(i, &hdi);
-				sResult += szBuffer;
-				if (i != nColumn - 1)
-					sResult += lpszSeparator;
-			}
-			++nCount;
-		}
-	}
-
-	while (pos)
-	{
-		nItem = pListCtrl->GetNextSelectedItem(pos);
-		if (0 != nCount)
-			sResult += _T("\r\n");
-
-		for (int i = 0; i < nColumn; ++i)
-		{
-			sResult += pListCtrl->GetItemText(nItem, i);
-			if (i != nColumn - 1)
-				sResult += lpszSeparator;
-		}
-		++nCount;
-	}
-
-	if (pListCtrl->OpenClipboard())
-	{
-		EmptyClipboard();
-
-		int nLen = (sResult.GetLength() + 1) * sizeof(WCHAR);
-		HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, nLen);
-		LPBYTE pGlobalData = (LPBYTE)GlobalLock(hGlobal);
-
-		USES_CONVERSION_EX;
-		CopyMemory(pGlobalData, T2CW_EX(sResult, _ATL_SAFE_ALLOCA_DEF_THRESHOLD), nLen);
-		SetClipboardData(CF_UNICODETEXT, hGlobal);
-
-		GlobalUnlock(hGlobal);
-		GlobalFree(hGlobal);
-
-		CloseClipboard();
-		return TRUE;
-	}
-	return FALSE;
-}
-
-/*소켓 셋팅 위해 현재 ip주소값 받아오기*/
-CString CMFCApplication4Dlg::GetLocalIP(void)
-{
-	WSADATA wsaData;
-	char name[255];
-	CString ip; // ip 저장.
-	PHOSTENT hostinfo;
-	if (WSAStartup(MAKEWORD(2, 0), &wsaData) == 0)
-	{
-		if (gethostname(name, sizeof(name)) == 0)
-		{
-			if ((hostinfo = gethostbyname(name)) != NULL)
-			{
-				ip = inet_ntoa(*(struct in_addr *)*hostinfo->h_addr_list);
-			}
-		}
-		WSACleanup();
-	}
-	return ip;
-}
-
-
-/* EDIT BOX 에 있는 TEXT값 복사해서 상점제목 가격 설정*/
-int ClipBoard(char *source)
-{
-	int ok = OpenClipboard(NULL);
-	if (!ok) return 0;
-	HGLOBAL clipbuffer;
-	char * buffer;
-	EmptyClipboard();
-	clipbuffer = GlobalAlloc(GMEM_DDESHARE, strlen(source) + 1);
-	buffer = (char*)GlobalLock(clipbuffer);
-	strcpy(buffer, source);
-	GlobalUnlock(clipbuffer);
-	SetClipboardData(CF_TEXT, clipbuffer);
-	CloseClipboard();
-	return 1;
-}
-
-//복사함수
-void SetClipboardText(CString strSource)
-{
-	//put your text in source
-	if (::OpenClipboard(NULL))
-	{
-		HGLOBAL clipbuffer;
-		char * buffer;
-		EmptyClipboard();
-		clipbuffer = GlobalAlloc(GMEM_DDESHARE, strSource.GetLength() + 1);
-		buffer = (char*)GlobalLock(clipbuffer);
-		strcpy(buffer, LPCSTR(strSource));
-		GlobalUnlock(clipbuffer);
-		SetClipboardData(CF_TEXT, clipbuffer);
-		CloseClipboard();
-	}
-}
-
-/* 비활성 모드에서도 POST방식으로 메이플에 엔터값 전송*/
-void PostMessageSend(HWND hMP, WPARAM wParam, LPARAM lParam)
-{
-	PostMessage(hMP, WM_KEYDOWN, wParam, lParam);
-}
-
-
-/* 더블클릭 */
-void Click(int Count, int x, int y)
-{
-	SetCursorPos(x, y);
-	for (int index = 0; index <= Count; index++)
-	{
-		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	}
-}
-
-
-//로그
-void LOGWRITE(char* log2)
-{
-	m_hWnd = FindWindow(NULL, "Mushroom");
-	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_ADDSTRING, NULL, (LPARAM)log2);
-	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_SETCURSEL, SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_GETCOUNT, 0, 0) - 1, 0);
-}
-
-
-//타임로그
-void TIMELOGWRITE(char* log2)
-{
-	m_hWnd = FindWindow(NULL, "Mushroom");
-	GetLocalTime(&st);
-	sprintf(Buffer, "[%d:%d:%d] %s", st.wHour, st.wMinute, st.wSecond, log2);
-	LOGWRITE(Buffer);
-	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_SETCURSEL, SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_GETCOUNT, 0, 0) - 1, 0);
-}
-
-void copy() {
-	m_hWnd = FindWindow(NULL, "Mushroom");
-
-	CString    csTemp;
-	char*    pszTemp = new char[csTemp.GetLength() + 1];
-
-	strcpy(pszTemp, csTemp);
-
-	GetDlgItemText(m_hWnd, IDC_EDIT3, pszTemp, 1009);
-	SetClipboardText(pszTemp);
-	delete[] pszTemp;
-}
-
-
-
-void ran() {
-
-	//WinExec("netsh interface ipv4 set subinterface ""이더넷"" mtu=20 store=persisten", SW_HIDE);
-	WinExec("C:\\랜off", SW_HIDE);
-	Sleep(1000);
-	keybd_event(VK_ESCAPE, 0, 0, 0);
-	keybd_event(VK_ESCAPE, 0, 2, 0);
-	Sleep(50);
-	storename();
-	Sleep(50);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	Sleep(50);
-	WinExec("C:\\랜on", SW_HIDE);
-	getitem();
-}
-
-
-/*일반상점 대기용 상점제목 */
-void storename() {
-	//캐시창이동
-	SetCursorPos(783, 64);
-	//캐시탭 클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(200);
-	//일상 이동
-	SetCursorPos(663, 97);
-	//일상더블클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(200);
-
-	//제목 v
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-
-
-}
-
-/*고용상점 대기용 상점제목 입력 */
-void storename2() {
-
-	//캐시창이동
-	SetCursorPos(787, 64);
-	//캐시탭 클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(200);
-	//고상 이동
-	SetCursorPos(706, 95);
-	//고상더블클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(200);
-
-	//제목 v
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-}
-
-void storename3() {
-
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(100);
-	//일상 이동
-	SetCursorPos(663, 97);
-	//일상더블클릭
-	Sleep(100);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(100);
-
-	//제목 v
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-
-
-}
-
-/*메이플 창 활성화 시키기 */
-void OffWindowLine()
-{
-	//S_CheckID();//보안모듈
-
-	hMP = FindWindow(NULL, "MapleStory");
-	Sleep(1);
-	SetWindowPos(hMP, 0, 0, 0, 800, 600, SWP_NOSIZE);
-	Sleep(1);
-	SetWindowPos(hMP, 0, 0, 0, 800, 600, SWP_NOSIZE);
-}
-
-
-/* 상점 개설 확인 여부후 아이템 올리기*/
-void getitem() {
-
-	Sleep(delay);
-	//장비창클릭
-	SetCursorPos(666, 66);
-	Sleep(50);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(50);
-	//장비템 클릭
-	SetCursorPos(666, 105);
-	Sleep(50);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(50);
-	//템올리는곳으로 이동
-	SetCursorPos(187, 294);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	//99999억
-	Sleep(100);
-
-
-	copy();
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-
-	Sleep(20);
-	SetCursorPos(655, 68);
-
-	Sleep(20);
-	///엔터
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-	Sleep(50);
-	//열기
-	SetCursorPos(353, 145);
-	Sleep(delay);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(500);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	TIMELOGWRITE(": 상점개설성공");
-}
-
-/*일반상점 인식 재대기 하기 */
-void ReSetMaket()
-{
-	//열기 실패창 닫기
-
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-	//캐시
-	Sleep(30);
-	SetCursorPos(784, 60);
-	Sleep(30);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(30);
-
-	//캐시템 더블
-	SetCursorPos(655, 102);
-	Sleep(10);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	Sleep(30);
-	//제목 여기여기
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-
-	Sleep(200);
-	TIMELOGWRITE("  :  일상재대기성공");
-}
-
-
-/* 고용상점 인식시 재대기 */
-void ReSetMaket2() {
-
-
-	//열기 실패창 닫기
-	Sleep(300);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-	//캐시
-	Sleep(200);
-	SetCursorPos(785, 61);
-	Sleep(50);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(50);
-
-	//캐시템 더블
-	SetCursorPos(692, 92);
-	Sleep(100);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(10);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-
-	Sleep(500);
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-
-	Sleep(500);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	TIMELOGWRITE(": 고상재대기성공");
-
-}
-
-/* 리상 하는 함수*/
-void ReSetStore() {
-
-	OffWindowLine();
-	SetForegroundWindow(hMP);
-	//상점닫기
-	SetCursorPos(344, 164);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	//정말끄시겟습니까?
-	Sleep(100);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	//아이템과 메소 모두찾앗습니다
-	Sleep(300);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	//아이템메소 찾는거 끄기
-
-
-	//캐시창이동
-	SetCursorPos(787, 64);
-	//캐시탭 클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(200);
-	//고상 이동
-	SetCursorPos(706, 95);
-	//고상더블클릭
-	Sleep(200);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(200);
-
-	//제목 edit값 복사
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	Sleep(20);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-	Sleep(100);
-	//장비창클릭
-	SetCursorPos(666, 66);
-	Sleep(50);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
-	Sleep(50);
-	//장비템 클릭
-	SetCursorPos(666, 105);
-	Sleep(50);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(50);
-	//템올리는곳으로 이동
-	SetCursorPos(187, 294);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	//99999억
-	Sleep(50);
-
-	copy();
-	keybd_event(0xA2, 0, 0, 0);
-	keybd_event(0x56, 0, 0, 0);
-	Sleep(20);
-	keybd_event(0x56, 0, 2, 0);
-	keybd_event(0xA2, 0, 2, 0);
-	SetCursorPos(655, 68);
-
-	Sleep(20);
-	///엔터
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-	Sleep(50);
-	//열기
-	SetCursorPos(353, 145);
-	Sleep(300);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
-	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
-	Sleep(200);
-	TIMELOGWRITE("  :  리상완료");
-}
-
-
-
-void GetPixelMP(int x, int y, HWND hMP)
-{
-	HDC hdc = GetDC(hMP);
-	color = GetPixel(hdc, x, y);
-}
-
-/*반응 했을시 상점을 잡았는지 체크*/
-bool Isok()
-{
-	Sleep(500);
-	TIMELOGWRITE(": 상점개설여부확인중");
-
-	HDC hdc;
-	COLORREF c_back1, c_back2, c_back3, c_back4;
-	hdc = GetDC(NULL);
-	CWindowDC dc(NULL);
-
-	SetForegroundWindow(hWnd);
-	Sleep(200);
-	c_back1 = GetPixel(hdc, 500, 220);
-	Sleep(1);
-	c_back2 = GetPixel(hdc, 500, 250);
-	Sleep(1);
-	c_back3 = GetPixel(hdc, 500, 270);
-	Sleep(1);
-	c_back4 = GetPixel(hdc, 500, 300);
-
-	SetForegroundWindow(hMP);
-	if ((c_back1 == 16777215) && (c_back2 == 16777215) && (c_back3 == 16777215)) {//&& (c_back4 == 16777215)) {
-		return 1;
-	}// && (c_back3 == 16777215) && (c_back4 == 16777215)) return 1;
-
-	return 0;
-
-
-}
-
-/*비활성 모드*/
-void fullmode() {
-
-	hMP = FindWindow(NULL, "MapleStory");
-	//SetWindowPos(hMP, 0, 0, 0, 800, 600, SW_MAXIMIZE);
-	Sleep(500);
-	CloseWindow(hMP);
-	SetWindowPos(hMP, 0, 0, 0, 800, 600, SW_SHOWNORMAL);
-
-}
-
-void ReSetMaket3() {
-
-	Sleep(50);
-	keybd_event(VK_RETURN, 0, 0, 0);
-	keybd_event(VK_RETURN, 0, 2, 0);
-
-}
 
 /*일반 상점 대기 메인 스레드*/
 DWORD WINAPI SockStart(LPVOID Param)
@@ -1230,21 +577,15 @@ DWORD WINAPI SockStart(LPVOID Param)
 
 	m_hWnd = FindWindow(NULL, "Mushroom");
 
-
 	char ac[255] = { 0, };
 	unsigned long v = 1, v2;
-
-
 	struct in_addr addr;
 
 	expert_state = 1; // recvfrom 초기화
 	PixelCheck = 0;
 	//UpMapleWindow();
-
 	SetForegroundWindow(hMP);
-
 	//	Protect1();  ///////////////////------------------보안
-
 	// 윈속 초기화
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -1255,46 +596,37 @@ DWORD WINAPI SockStart(LPVOID Param)
 		MessageBox(NULL, "관리자권한으로 실행해주세요.", "ERROR", MB_OK);
 		return 0;
 	}
-
 	if (gethostname(ac, sizeof(ac)) != SOCKET_ERROR)
 	{
-		struct hostent *phe = gethostbyname(ac);
+		struct hostent* phe = gethostbyname(ac);
 		if (phe != NULL)
 		{
 			memcpy(&addr, phe->h_addr_list[0], sizeof(struct in_addr));
 		}
 
 	}
-
 	struct sockaddr_in SockAddr;
 	ZeroMemory(&SockAddr, sizeof(SockAddr));
 	SockAddr.sin_family = AF_INET;
 	SockAddr.sin_port = NULL;
 	SockAddr.sin_addr.s_addr = addr.s_addr;
-	if (bind(sock, (sockaddr *)&SockAddr, sizeof(SockAddr)) == SOCKET_ERROR)
+	if (bind(sock, (sockaddr*)& SockAddr, sizeof(SockAddr)) == SOCKET_ERROR)
 	{
 		MessageBox(NULL, "바인딩", "에러", MB_OK);
 	}
 
-
 	struct sockaddr_in fromAddr;
 	int fromAddrLen = sizeof(fromAddr);
-
 
 	if (WSAIoctl(sock, SIO_RCVALL, &v, sizeof(v), 0, 0, &v2, 0, 0) == SOCKET_ERROR)
 	{
 		MessageBox(NULL, "옵션 실패 ", "에러", MB_OK);
 	}
 
-
 	HDC hdc;
 	hdc = GetDC(NULL);
-
-
 	int iphsz, hsz, pksz;
-
 	m_BUFFSZ = 65536 * 2;
-
 	// 패킷 버퍼 생성
 	m_BUFF = (unsigned char*)malloc(m_BUFFSZ + 2);
 	//m_PDATATXT=(unsigned char*)malloc(m_BUFFSZ+2);
@@ -1305,7 +637,7 @@ DWORD WINAPI SockStart(LPVOID Param)
 
 		memset(&fromAddr, 0, fromAddrLen);
 		//   m_PACKETSZ = recvfrom(sock,(char*)m_BUFF,m_BUFFSZ,0,(struct sockaddr *)&fromAddr,&fromAddrLen);
-		m_PACKETSZ = recvfrom(sock, (char*)m_BUFF, m_BUFFSZ, 0, (struct sockaddr *)&fromAddr, &fromAddrLen);
+		m_PACKETSZ = recvfrom(sock, (char*)m_BUFF, m_BUFFSZ, 0, (struct sockaddr*) & fromAddr, &fromAddrLen);
 
 
 		if (m_PACKETSZ > 0) {
@@ -1317,18 +649,15 @@ DWORD WINAPI SockStart(LPVOID Param)
 			iphsz = (m_PIPH->ihl * 4);
 			pksz = m_PACKETSZ;
 
-
 			//if(m_PROTO==PROTO_TCP && m_SRCPORT == 80 ) {
 			if (m_PROTO == PROTO_TCP) {
 
-				m_PTCPH = (struct tcphdr*)&m_BUFF[iphsz];
+				m_PTCPH = (struct tcphdr*) & m_BUFF[iphsz];
 				m_SRCPORT = ntohs(m_PTCPH->source);
 				//			m_DSTPORT=ntohs(m_PTCPH->dest);			
 				hsz = m_PTCPH->doff * 4;
-				m_PDATA = (unsigned char*)&m_BUFF[iphsz + hsz];
-
+				m_PDATA = (unsigned char*)& m_BUFF[iphsz + hsz];
 				m_DATASZ = pksz - iphsz - hsz;
-
 
 				if (m_SRCPORT >= 0x2124 && m_SRCPORT <= 0x231d) {
 
@@ -1336,7 +665,6 @@ DWORD WINAPI SockStart(LPVOID Param)
 
 						PostMessageSend(hMP, 13, 1835009);
 						TIMELOGWRITE(": 신호반응");
-
 						if (Isok())
 						{
 							KillTimer(m_hWnd, 1234);
@@ -1354,16 +682,12 @@ DWORD WINAPI SockStart(LPVOID Param)
 							return 1;
 
 						}
-
-						////재대기 함수 호출
 						else {
 
 							ReSetMaket();
 							TIMELOGWRITE(": 상점개설실패");
 							TIMELOGWRITE(": 재대기함수호출");
 						}
-
-						//NumberOpen();
 					}
 				}
 
@@ -1392,7 +716,6 @@ DWORD WINAPI SockStart2(LPVOID Param)
 	SetForegroundWindow(hMP);
 
 	//	Protect1();  ///////////////////------------------보안
-
 	// 윈속 초기화
 	WSADATA wsa;
 	if (WSAStartup(MAKEWORD(2, 2), &wsa) != 0)
@@ -1400,7 +723,6 @@ DWORD WINAPI SockStart2(LPVOID Param)
 
 	// socket()
 	sock = socket(AF_INET, SOCK_RAW, IPPROTO_IP);
-
 	if (sock == INVALID_SOCKET) {
 
 		MessageBox(NULL, "관리자권한으로 실행해주세요.", "ERROR", MB_OK);
@@ -1408,17 +730,15 @@ DWORD WINAPI SockStart2(LPVOID Param)
 		return 0;
 	}
 
-
 	if (gethostname(ac, sizeof(ac)) != SOCKET_ERROR)
 	{
-		struct hostent *phe = gethostbyname(ac);
+		struct hostent* phe = gethostbyname(ac);
 		if (phe != NULL)
 		{
 			memcpy(&addr, phe->h_addr_list[0], sizeof(struct in_addr));
 		}
 
 	}
-
 
 	// connect()
 	struct sockaddr_in SockAddr;
@@ -1431,7 +751,7 @@ DWORD WINAPI SockStart2(LPVOID Param)
 	//	else SockAddr.sin_port = NULL;
 	//	SockAddr.sin_addr.s_addr = inet_addr("114.205.138.138");
 
-	if (bind(sock, (sockaddr *)&SockAddr, sizeof(SockAddr)) == SOCKET_ERROR)
+	if (bind(sock, (sockaddr*)& SockAddr, sizeof(SockAddr)) == SOCKET_ERROR)
 	{
 		MessageBox(NULL, "바인딩", "에러", MB_OK);
 	}
@@ -1448,10 +768,8 @@ DWORD WINAPI SockStart2(LPVOID Param)
 		//goto ERR;
 	}
 
-
 	HDC hdc;
 	hdc = GetDC(NULL);
-
 
 	int iphsz, hsz, pksz;
 
@@ -1465,14 +783,11 @@ DWORD WINAPI SockStart2(LPVOID Param)
 
 	while (expert_state)
 	{
-
 		memset(&fromAddr, 0, fromAddrLen);
 		//    m_PACKETSZ = recvfrom(sock,(char*)m_BUFF,m_BUFFSZ,0,(struct sockaddr *)&fromAddr,&fromAddrLen);
-		m_PACKETSZ = recvfrom(sock, (char*)m_BUFF, m_BUFFSZ, 0, (struct sockaddr *)&fromAddr, &fromAddrLen);
-
+		m_PACKETSZ = recvfrom(sock, (char*)m_BUFF, m_BUFFSZ, 0, (struct sockaddr*) & fromAddr, &fromAddrLen);
 
 		if (m_PACKETSZ > 0) {
-
 			m_PROTO = m_PIPH->protocol;
 
 			m_SRCPORT = 0;
@@ -1480,28 +795,21 @@ DWORD WINAPI SockStart2(LPVOID Param)
 			iphsz = (m_PIPH->ihl * 4);
 			pksz = m_PACKETSZ;
 
-
-
 			//if(m_PROTO==PROTO_TCP && m_SRCPORT == 80 ) {
 			if (m_PROTO == PROTO_TCP) {
 
 
-				m_PTCPH = (struct tcphdr*)&m_BUFF[iphsz];
+				m_PTCPH = (struct tcphdr*) & m_BUFF[iphsz];
 				m_SRCPORT = ntohs(m_PTCPH->source);
 				//			m_DSTPORT=ntohs(m_PTCPH->dest);			
 				hsz = m_PTCPH->doff * 4;
-				m_PDATA = (unsigned char*)&m_BUFF[iphsz + hsz];
+				m_PDATA = (unsigned char*)& m_BUFF[iphsz + hsz];
 				m_DATASZ = pksz - iphsz - hsz;
 
 				if (m_SRCPORT >= 0x2124 && m_SRCPORT <= 0x231d) {
-
-
-
 					if (m_DATASZ == 11) {
-
 						PostMessageSend(hMP, 13, 1835009);
 						TIMELOGWRITE(": 신호반응");
-
 						if (Isok())
 						{
 
@@ -1517,17 +825,12 @@ DWORD WINAPI SockStart2(LPVOID Param)
 							return 1;
 
 						}
-
-
-						////재대기 함수 호출
 						else {
 
 							ReSetMaket2();
 							TIMELOGWRITE(": 상점개설실패");
 							TIMELOGWRITE(": 재대기함수호출");
 						}
-
-						//NumberOpen();
 					}
 
 				}
@@ -1561,8 +864,6 @@ DWORD WINAPI PICXEL(LPVOID Param) {
 			return 1;
 
 		}
-
-
 		////재대기 함수 호출
 		else {
 
@@ -1784,7 +1085,7 @@ void CMFCApplication4Dlg::OnBnClickedButton3()
 void CMFCApplication4Dlg::OnEnChangeEdit1() {}
 void CMFCApplication4Dlg::OnEnChangeEdit3() {}
 
-/*엔딜 제거 하기 (MTU값 조절 하기)*/
+/*엔딜 제거 하기 (MTU값 재셋팅)*/
 void CMFCApplication4Dlg::OnBnClickedCheck1()
 {
 	UpdateData(TRUE);
@@ -1948,6 +1249,650 @@ void CALLBACK MTUTimerProc(HWND hWnd, UINT uMsg, UINT idEvent, DWORD dwTime)
 	WinExec("netsh interface ipv4 set subinterface ""이더넷"" mtu=56 store=persisten", SW_HIDE);
 	TIMELOGWRITE(": MTU → 56");
 }
+
+
+//복사함수
+BOOL CopyToClipboard(CListCtrl * pListCtrl, LPCTSTR lpszSeparator = _T("\t"), BOOL bCopyHeaderText = FALSE)
+{
+	ASSERT(pListCtrl && ::IsWindow(pListCtrl->GetSafeHwnd()));
+
+	CString sResult;
+	POSITION pos = pListCtrl->GetFirstSelectedItemPosition();
+	if (!pos)
+		return TRUE;
+
+	CWaitCursor wait;
+	int nItem, nCount = 0;
+	int nColumn = 1;
+
+	if ((pListCtrl->GetStyle() & LVS_TYPEMASK) == LVS_REPORT &&
+		pListCtrl->GetExtendedStyle() & LVS_EX_FULLROWSELECT)
+	{
+		CHeaderCtrl* pHeader = pListCtrl->GetHeaderCtrl();
+		nColumn = pHeader ? pHeader->GetItemCount() : 1;
+
+		if (bCopyHeaderText && pHeader)
+		{
+			for (int i = 0; i < nColumn; ++i)
+			{
+				TCHAR szBuffer[256];
+				HDITEM hdi;
+				hdi.mask = HDI_TEXT;
+				hdi.pszText = szBuffer;
+				hdi.cchTextMax = 256;
+
+				pHeader->GetItem(i, &hdi);
+				sResult += szBuffer;
+				if (i != nColumn - 1)
+					sResult += lpszSeparator;
+			}
+			++nCount;
+		}
+	}
+
+	while (pos)
+	{
+		nItem = pListCtrl->GetNextSelectedItem(pos);
+		if (0 != nCount)
+			sResult += _T("\r\n");
+
+		for (int i = 0; i < nColumn; ++i)
+		{
+			sResult += pListCtrl->GetItemText(nItem, i);
+			if (i != nColumn - 1)
+				sResult += lpszSeparator;
+		}
+		++nCount;
+	}
+
+	if (pListCtrl->OpenClipboard())
+	{
+		EmptyClipboard();
+
+		int nLen = (sResult.GetLength() + 1) * sizeof(WCHAR);
+		HGLOBAL hGlobal = GlobalAlloc(GMEM_MOVEABLE | GMEM_DDESHARE, nLen);
+		LPBYTE pGlobalData = (LPBYTE)GlobalLock(hGlobal);
+
+		USES_CONVERSION_EX;
+		CopyMemory(pGlobalData, T2CW_EX(sResult, _ATL_SAFE_ALLOCA_DEF_THRESHOLD), nLen);
+		SetClipboardData(CF_UNICODETEXT, hGlobal);
+
+		GlobalUnlock(hGlobal);
+		GlobalFree(hGlobal);
+
+		CloseClipboard();
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/*소켓 셋팅 위해 현재 ip주소값 받아오기*/
+CString CMFCApplication4Dlg::GetLocalIP(void)
+{
+	WSADATA wsaData;
+	char name[255];
+	CString ip; // ip 저장.
+	PHOSTENT hostinfo;
+	if (WSAStartup(MAKEWORD(2, 0), &wsaData) == 0)
+	{
+		if (gethostname(name, sizeof(name)) == 0)
+		{
+			if ((hostinfo = gethostbyname(name)) != NULL)
+			{
+				ip = inet_ntoa(*(struct in_addr*) * hostinfo->h_addr_list);
+			}
+		}
+		WSACleanup();
+	}
+	return ip;
+}
+
+
+/* EDIT BOX 에 있는 TEXT값 복사해서 상점제목 가격 설정*/
+int ClipBoard(char* source)
+{
+	int ok = OpenClipboard(NULL);
+	if (!ok) return 0;
+	HGLOBAL clipbuffer;
+	char* buffer;
+	EmptyClipboard();
+	clipbuffer = GlobalAlloc(GMEM_DDESHARE, strlen(source) + 1);
+	buffer = (char*)GlobalLock(clipbuffer);
+	strcpy(buffer, source);
+	GlobalUnlock(clipbuffer);
+	SetClipboardData(CF_TEXT, clipbuffer);
+	CloseClipboard();
+	return 1;
+}
+
+//복사함수2
+void SetClipboardText(CString strSource)
+{
+	//put your text in source
+	if (::OpenClipboard(NULL))
+	{
+		HGLOBAL clipbuffer;
+		char* buffer;
+		EmptyClipboard();
+		clipbuffer = GlobalAlloc(GMEM_DDESHARE, strSource.GetLength() + 1);
+		buffer = (char*)GlobalLock(clipbuffer);
+		strcpy(buffer, LPCSTR(strSource));
+		GlobalUnlock(clipbuffer);
+		SetClipboardData(CF_TEXT, clipbuffer);
+		CloseClipboard();
+	}
+}
+
+/* 비활성 모드에서도 메이플에 엔터패킷 전송*/
+void PostMessageSend(HWND hMP, WPARAM wParam, LPARAM lParam)
+{
+	PostMessage(hMP, WM_KEYDOWN, wParam, lParam);
+}
+
+
+/* 더블클릭 */
+void Click(int Count, int x, int y)
+{
+	SetCursorPos(x, y);
+	for (int index = 0; index <= Count; index++)
+	{
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+		mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+		mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	}
+}
+
+
+//로드
+void LOGWRITE(char* log2)
+{
+	m_hWnd = FindWindow(NULL, "Mushroom");
+	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_ADDSTRING, NULL, (LPARAM)log2);
+	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_SETCURSEL, SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_GETCOUNT, 0, 0) - 1, 0);
+}
+
+//타임로그
+void TIMELOGWRITE(char* log2)
+{
+	m_hWnd = FindWindow(NULL, "Mushroom");
+	GetLocalTime(&st);
+	sprintf(Buffer, "[%d:%d:%d] %s", st.wHour, st.wMinute, st.wSecond, log2);
+	LOGWRITE(Buffer);
+	SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_SETCURSEL, SendMessage(GetDlgItem(m_hWnd, IDC_LIST1), LB_GETCOUNT, 0, 0) - 1, 0);
+}
+
+void copy() {
+	m_hWnd = FindWindow(NULL, "Mushroom");
+
+	CString    csTemp;
+	char* pszTemp = new char[csTemp.GetLength() + 1];
+
+	strcpy(pszTemp, csTemp);
+
+	GetDlgItemText(m_hWnd, IDC_EDIT3, pszTemp, 1009);
+	SetClipboardText(pszTemp);
+	delete[] pszTemp;
+}
+
+
+void ran() {
+
+	//WinExec("netsh interface ipv4 set subinterface ""이더넷"" mtu=20 store=persisten", SW_HIDE);
+	WinExec("C:\\랜off", SW_HIDE);
+	Sleep(1000);
+	keybd_event(VK_ESCAPE, 0, 0, 0);
+	keybd_event(VK_ESCAPE, 0, 2, 0);
+	Sleep(50);
+	storename();
+	Sleep(50);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	Sleep(50);
+	WinExec("C:\\랜on", SW_HIDE);
+	getitem();
+}
+
+/*일상 대기용 상점제목 */
+void storename() {
+	//캐시창이동
+	SetCursorPos(783, 64);
+	//캐시탭 클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(200);
+	//일상 이동
+	SetCursorPos(663, 97);
+	//일상더블클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(200);
+
+	//제목 v
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+
+
+}
+
+/*고상 대기용 상점제목  */
+void storename2() {
+
+	//캐시창이동
+	SetCursorPos(787, 64);
+	//캐시탭 클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(200);
+	//고상 이동
+	SetCursorPos(706, 95);
+	//고상더블클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(200);
+
+	//제목 v
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+}
+
+void storename3() {
+
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(100);
+	//일상 이동
+	SetCursorPos(663, 97);
+	//일상더블클릭
+	Sleep(100);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(100);
+
+	//제목 v
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+
+
+}
+
+/*메이플 창 활성화 */
+void OffWindowLine()
+{
+	//S_CheckID();//보안모듈
+
+	hMP = FindWindow(NULL, "MapleStory");
+	Sleep(1);
+	SetWindowPos(hMP, 0, 0, 0, 800, 600, SWP_NOSIZE);
+	Sleep(1);
+	SetWindowPos(hMP, 0, 0, 0, 800, 600, SWP_NOSIZE);
+}
+
+
+/* 상점 개설 확인 여부후 아이템 올리기*/
+void getitem() {
+
+	Sleep(delay);
+	//장비창클릭
+	SetCursorPos(666, 66);
+	Sleep(50);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(50);
+	//장비템 클릭
+	SetCursorPos(666, 105);
+	Sleep(50);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(50);
+	//템올리는곳으로 이동
+	SetCursorPos(187, 294);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	//99999억
+	Sleep(100);
+
+
+	copy();
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+
+	Sleep(20);
+	SetCursorPos(655, 68);
+
+	Sleep(20);
+	///엔터
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+	Sleep(50);
+	//열기
+	SetCursorPos(353, 145);
+	Sleep(delay);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(500);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	TIMELOGWRITE(": 상점개설성공");
+}
+
+/*일반상점 인식 재대기 하기 */
+void ReSetMaket()
+{
+	//열기 실패창 닫기
+
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+	//캐시
+	Sleep(30);
+	SetCursorPos(784, 60);
+	Sleep(30);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(30);
+
+	//캐시템 더블
+	SetCursorPos(655, 102);
+	Sleep(10);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	Sleep(30);
+	//제목 여기여기
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+
+	Sleep(200);
+	TIMELOGWRITE("  :  일상재대기성공");
+}
+
+
+/* 고용상점 인식시 재대기 */
+void ReSetMaket2() {
+
+
+	//열기 실패창 닫기
+	Sleep(300);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+	//캐시
+	Sleep(200);
+	SetCursorPos(785, 61);
+	Sleep(50);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(50);
+
+	//캐시템 더블
+	SetCursorPos(692, 92);
+	Sleep(100);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(10);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+
+	Sleep(500);
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+
+	Sleep(500);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	TIMELOGWRITE(": 고상재대기성공");
+
+}
+
+/* 리상*/
+void ReSetStore() {
+
+	OffWindowLine();
+	SetForegroundWindow(hMP);
+	//상점닫기
+	SetCursorPos(344, 164);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	//정말끄시겟습니까?
+	Sleep(100);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	//아이템과 메소 모두찾앗습니다
+	Sleep(300);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	//아이템메소 찾는거 끄기
+
+
+	//캐시창이동
+	SetCursorPos(787, 64);
+	//캐시탭 클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(200);
+	//고상 이동
+	SetCursorPos(706, 95);
+	//고상더블클릭
+	Sleep(200);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(200);
+
+	//제목 edit값 복사
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	Sleep(20);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+	Sleep(100);
+	//장비창클릭
+	SetCursorPos(666, 66);
+	Sleep(50);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0); // 마우스 왼쪽 버튼을 누릅니다.
+	Sleep(50);
+	//장비템 클릭
+	SetCursorPos(666, 105);
+	Sleep(50);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(50);
+	//템올리는곳으로 이동
+	SetCursorPos(187, 294);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	//99999억
+	Sleep(50);
+
+	copy();
+	keybd_event(0xA2, 0, 0, 0);
+	keybd_event(0x56, 0, 0, 0);
+	Sleep(20);
+	keybd_event(0x56, 0, 2, 0);
+	keybd_event(0xA2, 0, 2, 0);
+	SetCursorPos(655, 68);
+
+	Sleep(20);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+	Sleep(50);
+	//열기
+	SetCursorPos(353, 145);
+	Sleep(300);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+	mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+	Sleep(200);
+	TIMELOGWRITE("  :  리상완료");
+}
+
+
+
+void GetPixelMP(int x, int y, HWND hMP)
+{
+	HDC hdc = GetDC(hMP);
+	color = GetPixel(hdc, x, y);
+}
+
+/*패킷을 찾고 반응 했을시 상점을 잡았는지 체크*/
+bool Isok()
+{
+	Sleep(500);
+	TIMELOGWRITE(": 상점개설여부확인중");
+
+	HDC hdc;
+	COLORREF c_back1, c_back2, c_back3, c_back4;
+	hdc = GetDC(NULL);
+	CWindowDC dc(NULL);
+
+	SetForegroundWindow(hWnd);
+	Sleep(200);
+	c_back1 = GetPixel(hdc, 500, 220);
+	Sleep(1);
+	c_back2 = GetPixel(hdc, 500, 250);
+	Sleep(1);
+	c_back3 = GetPixel(hdc, 500, 270);
+	Sleep(1);
+	c_back4 = GetPixel(hdc, 500, 300);
+
+	SetForegroundWindow(hMP);
+	if ((c_back1 == 16777215) && (c_back2 == 16777215) && (c_back3 == 16777215)) {//&& (c_back4 == 16777215)) {
+		return 1;
+	}// && (c_back3 == 16777215) && (c_back4 == 16777215)) return 1;
+
+	return 0;
+
+
+}
+
+/*비활성 모드*/
+void fullmode() {
+
+	hMP = FindWindow(NULL, "MapleStory");
+	//SetWindowPos(hMP, 0, 0, 0, 800, 600, SW_MAXIMIZE);
+	Sleep(500);
+	CloseWindow(hMP);
+	SetWindowPos(hMP, 0, 0, 0, 800, 600, SW_SHOWNORMAL);
+
+}
+
+void ReSetMaket3() {
+
+	Sleep(50);
+	keybd_event(VK_RETURN, 0, 0, 0);
+	keybd_event(VK_RETURN, 0, 2, 0);
+
+}
+
+
 
 
 
